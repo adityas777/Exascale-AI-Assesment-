@@ -6,7 +6,7 @@ This project implements the production-ready live forecasting system for APU's g
 **Live demo:** https://apu-demand-forecast.onrender.com/
 *(Render free tier — may take 30–60s to wake up if idle. Refresh once if the first load looks stale.)*
 
-![Dashboard screenshot](<img width="950" height="490" alt="image" src="https://github.com/user-attachments/assets/771eabeb-33ba-45ff-85f3-996bc101feff" />
+![Dashboard screenshot](<https://drive.google.com/file/d/1wZpJ-0cSuFZbRc4M-_x3RWUPXRHEJRqa/view?usp=drive_link>
 )
 ## Architecture Overview
 
