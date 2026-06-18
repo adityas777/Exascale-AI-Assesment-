@@ -3,7 +3,7 @@
 This project implements the production-ready live forecasting system for APU's grid load dispatching. The architecture connects a live weather forecast feed (Open-Meteo API) with a custom feature engineering pipeline. Predictions are served in real-time by a FastAPI backend utilizing Model B (weather + calendar features, trained on Dhanbad conditions), which are then rendered on a highly responsive, glassmorphic web dashboard that auto-refreshes every 10 minutes.
 
 ---
-#DEPLOYED LINK: https://apu-demand-forecast.onrender.com/
+# DEPLOYED LINK: https://apu-demand-forecast.onrender.com/
 *(Render free tier — may take 30–60s to wake up if idle. Refresh once if the first load looks stale.)*
 
 ## Architecture Overview
