@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APU Demand Forecasting Dashboard</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js and Annotation plugin via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(17, 24, 39, 0.65);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --primary: #00f2fe;
+            --primary-glow: rgba(0, 242, 254, 0.15);
+            --accent: #4facfe;
+            --warning: #ff9900;
+            --warning-glow: rgba(255, 153, 0, 0.15);
+            --danger: #ff3366;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2rem;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(0, 242, 254, 0.04) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(79, 172, 254, 0.04) 0%, transparent 40%);
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Glassmorphic card utility */
+        .glass-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            backdrop-filter: blur(12px);
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        /* Top Header Area */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .brand-logo {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .brand-logo svg {
+            fill: #0b0f19;
+            width: 24px;
+            height: 24px;
+        }
+
+        .brand-title h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #ffffff, #d1d5db);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-title p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .header-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .badge-live {
+            background-color: rgba(0, 242, 254, 0.1);
+            color: var(--primary);
+            border: 1px solid rgba(0, 242, 254, 0.3);
+            box-shadow: 0 0 10px rgba(0, 242, 254, 0.05);
+        }
+
+        .badge-live::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        .badge-stale {
+            background-color: rgba(255, 153, 0, 0.1);
+            color: var(--warning);
+            border: 1px solid rgba(255, 153, 0, 0.3);
+            display: none; /* hidden by default */
+        }
+
+        .badge-stale::before {
+            content: '!';
+            font-weight: bold;
+            margin-right: 2px;
+        }
+
+        .timestamp-info {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.03);
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            border: 1px solid var(--card-border);
+        }
+
+        /* Main Workspace Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+            flex-grow: 1;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Large Left Panel (Forecast Chart) */
+        .chart-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chart-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .mode-toggle {
+            display: flex;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.25rem;
+            border-radius: 8px;
+            border: 1px solid var(--card-border);
+        }
+
+        .mode-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.4rem 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: #0b0f19;
+            box-shadow: 0 2px 10px rgba(0, 242, 254, 0.25);
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+        }
+
+        /* Small Right Panel (Weather Conditions) */
+        .weather-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .weather-section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .weather-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        @media (min-width: 640px) and (max-width: 1024px) {
+            .weather-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .weather-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .weather-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            z-index: 1;
+        }
+
+        .weather-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .weather-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            font-family: 'Outfit', sans-serif;
+            background: #ffffff;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .weather-sparkline {
+            width: 120px;
+            height: 50px;
+            z-index: 1;
+        }
+
+        /* Holiday Banner Area */
+        .holiday-banner {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.2rem;
+            border-radius: 12px;
+            margin-top: 0.5rem;
+            background: linear-gradient(to right, var(--warning-glow), transparent);
+            border-left: 4px solid var(--warning);
+        }
+
+        .holiday-banner-icon {
+            font-size: 1.5rem;
+            animation: bounce 2s infinite;
+        }
+
+        .holiday-banner-text h4 {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #fff;
+            margin-bottom: 0.15rem;
+        }
+
+        .holiday-banner-text p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .holiday-banner-secondary {
+            border-left-color: var(--accent);
+            background: linear-gradient(to right, rgba(79, 172, 254, 0.08), transparent);
+        }
+
+        /* Error Alert Bar */
+        .error-banner {
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            background: rgba(255, 51, 102, 0.15);
+            border: 1px solid rgba(255, 51, 102, 0.4);
+            border-radius: 10px;
+            padding: 1rem;
+            color: #ff88a8;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* Loading Screen Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: var(--bg-color);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            transition: opacity 0.4s ease;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(0, 242, 254, 0.1);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            box-shadow: 0 0 20px rgba(0, 242, 254, 0.1);
+        }
+
+        .loading-text {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #fff, var(--text-muted));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 0.5px;
+        }
+
+        /* Animations */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.6; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.6; }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-6px); }
+            60% { transform: translateY(-3px); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading APU Energy Pipeline...</div>
+    </div>
+
+    <!-- Error Banner -->
+    <div id="errorBanner" class="error-banner">
+        <svg style="width: 20px; height: 20px; fill: currentColor;" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+        </svg>
+        <span id="errorMessage">Connection error: Failed to reach forecasting API server.</span>
+    </div>
+
+    <!-- Top Navigation Header -->
+    <header>
+        <div class="brand">
+            <div class="brand-logo">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 2L2 22h20L12 2zm1 18h-2v-2h2v2zm0-4h-2V9h2v7z"/>
+                </svg>
+            </div>
+            <div class="brand-title">
+                <h1>APU Power Demand Forecast</h1>
+                <p>Apex Power & Utilities — Live Load Dispatching Center</p>
+            </div>
+        </div>
+        
+        <div class="header-meta">
+            <div id="staleBadge" class="badge badge-stale">Stale Data Mode</div>
+            <div class="badge badge-live">Live System</div>
+            <div class="timestamp-info">
+                Last Updated: <span id="lastUpdated">--:--:--</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Grid -->
+    <div class="dashboard-grid">
+        
+        <!-- Forecast Card -->
+        <div class="glass-card chart-section">
+            <div class="chart-header">
+                <h2>16-Hour Demand Curve (10-Min Resolution)</h2>
+                
+                <!-- Live/Backtest toggle -->
+                <div class="mode-toggle">
+                    <button id="modeLive" class="mode-btn active" onclick="setMode('live')">Live Forecast (Model B)</button>
+                    <button id="modeBacktest" class="mode-btn" onclick="setMode('backtest')">Historical Backtest (Model A)</button>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="forecastChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Weather Card / Sparklines -->
+        <div class="weather-section">
+            <h2 class="weather-section-title">Dhanbad Weather Conditions</h2>
+            <div class="weather-grid">
+                
+                <!-- Temp Card -->
+                <div class="glass-card weather-card">
+                    <div class="weather-info">
+                        <span class="weather-label">Temperature</span>
+                        <span id="valTemp" class="weather-value">--°C</span>
+                    </div>
+                    <canvas id="sparklineTemp" class="weather-sparkline"></canvas>
+                </div>
+                
+                <!-- Humidity Card -->
+                <div class="glass-card weather-card">
+                    <div class="weather-info">
+                        <span class="weather-label">Relative Humidity</span>
+                        <span id="valHum" class="weather-value">--%</span>
+                    </div>
+                    <canvas id="sparklineHum" class="weather-sparkline"></canvas>
+                </div>
+                
+                <!-- Cloud Cover Card -->
+                <div class="glass-card weather-card">
+                    <div class="weather-info">
+                        <span class="weather-label">Cloud Cover</span>
+                        <span id="valCloud" class="weather-value">--%</span>
+                    </div>
+                    <canvas id="sparklineCloud" class="weather-sparkline"></canvas>
+                </div>
+                
+                <!-- Wind Speed Card -->
+                <div class="glass-card weather-card">
+                    <div class="weather-info">
+                        <span class="weather-label">Wind Speed</span>
+                        <span id="valWind" class="weather-value">-- km/h</span>
+                    </div>
+                    <canvas id="sparklineWind" class="weather-sparkline"></canvas>
+                </div>
+                
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- Holidays Banner Area -->
+    <div id="holidayBannerContainer">
+        <!-- populated dynamically -->
+    </div>
+
+    <!-- System Events Logs -->
+    <div class="glass-card" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+        <h3 style="font-size: 1rem; font-weight: 600; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; font-family: 'Outfit', sans-serif;">
+            <span>System Activity Logs</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">Updates every 10 min</span>
+        </h3>
+        <div id="activityLogs" style="font-family: monospace; font-size: 0.8rem; max-height: 120px; overflow-y: auto; background: rgba(0,0,0,0.25); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--card-border); color: #00f2fe; display: flex; flex-direction: column; gap: 4px; line-height: 1.4;">
+            <!-- Appended programmatically -->
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'live';
+        let forecastChart = null;
+        let sparklineCharts = {};
+        
+        function addLog(message) {
+            const logContainer = document.getElementById('activityLogs');
+            const now = new Date();
+            const timeStr = now.toTimeString().split(' ')[0];
+            
+            // Clean HTML tags from message for clean console formatting
+            const cleanText = message.replace(/<[^>]*>/g, '');
+            console.log(`[${timeStr}] ${cleanText}`);
+            
+            if (!logContainer) return;
+            const logLine = document.createElement('div');
+            logLine.innerHTML = `<span style="color: var(--text-muted);">[${timeStr}]</span> ${message}`;
+            logContainer.appendChild(logLine);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            // Limit to last 20 log messages
+            while (logContainer.childNodes.length > 20) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+
+        // Initial setup
+        window.addEventListener('DOMContentLoaded', () => {
+            addLog("Dashboard initialized. Fetching load dispatch data...");
+            fetchAllData();
+            // 10-minute refresh loop (10 * 60 * 1000 ms)
+            setInterval(() => {
+                addLog("10-minute auto-refresh triggered. Updating demand forecast and weather data...");
+                fetchAllData();
+            }, 10 * 60 * 1000);
+        });
+
+        function setMode(mode) {
+            if (currentMode === mode) return;
+            currentMode = mode;
+            
+            document.getElementById('modeLive').classList.toggle('active', mode === 'live');
+            document.getElementById('modeBacktest').classList.toggle('active', mode === 'backtest');
+            
+            addLog(`Toggling mode to ${mode.toUpperCase()}...`);
+            fetchAllData();
+        }
+
+        async function fetchAllData() {
+            try {
+                // Clear state
+                hideError();
+
+                // Fetch API endpoints in parallel
+                const host = window.location.origin;
+                addLog(`Requesting: /forecast?mode=${currentMode}, /weather, /holidays`);
+                const [respForecast, respWeather, respHolidays] = await Promise.all([
+                    fetch(`${host}/forecast?mode=${currentMode}`),
+                    fetch(`${host}/weather`),
+                    fetch(`${host}/holidays`)
+                ]);
+
+                if (!respForecast.ok || !respWeather.ok || !respHolidays.ok) {
+                    throw new Error(`API server returned error code. Forecast: ${respForecast.status}, Weather: ${respWeather.status}, Holidays: ${respHolidays.status}`);
+                }
+
+                const dataForecast = await respForecast.json();
+                const dataWeather = await respWeather.json();
+                const dataHolidays = await respHolidays.json();
+
+                // Check stale badge
+                const isStale = dataForecast.stale || dataWeather.stale;
+                document.getElementById('staleBadge').style.display = isStale ? 'inline-flex' : 'none';
+
+                // Update timestamp
+                const now = new Date();
+                const timeStr = now.toTimeString().split(' ')[0];
+                document.getElementById('lastUpdated').textContent = timeStr;
+
+                // Render components
+                renderForecastChart(dataForecast.data, dataHolidays.in_window);
+                renderWeatherPanel(dataWeather.data);
+                renderHolidayBanner(dataHolidays);
+
+                addLog(`Success: Rendered forecast chart using ${dataForecast.model}. Stale: ${isStale}. Next refresh in 10 minutes.`);
+
+                // Hide loading spinner on first load
+                document.getElementById('loadingOverlay').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                }, 400);
+
+            } catch (err) {
+                console.error("Dashboard error:", err);
+                showError(err.message);
+                addLog(`<span style="color: var(--danger);">System Error: ${err.message}</span>`);
+                document.getElementById('loadingOverlay').style.display = 'none';
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('errorBanner').style.display = 'flex';
+            document.getElementById('errorMessage').textContent = `System Error: ${message}`;
+        }
+
+        function hideError() {
+            document.getElementById('errorBanner').style.display = 'none';
+        }
+
+        // Format raw ISO datetimes for Chart axes labels
+        function formatLabelTime(isoStr) {
+            const date = new Date(isoStr);
+            const hh = String(date.getHours()).padStart(2, '0');
+            const mm = String(date.getMinutes()).padStart(2, '0');
+            return `${hh}:${mm}`;
+        }
+
+        function renderForecastChart(forecastData, holidaysInWindow) {
+            const labels = forecastData.map(item => formatLabelTime(item.timestamp));
+            const values = forecastData.map(item => item.predicted_load_kw);
+
+            // Construct annotations for any holidays inside the window
+            const annotations = {};
+            holidaysInWindow.forEach((holiday, idx) => {
+                const holDateStr = holiday.date; // "YYYY-MM-DD"
+                // Find matching index in forecastData where timestamp date matches the holiday date
+                const index = forecastData.findIndex(item => item.timestamp.startsWith(holDateStr));
+                if (index !== -1) {
+                    annotations['holidayLine_' + idx] = {
+                        type: 'line',
+                        scaleID: 'x',
+                        value: index,
+                        borderColor: '#ff9900',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        label: {
+                            display: true,
+                            content: holiday.name,
+                            position: 'start',
+                            backgroundColor: 'rgba(255, 153, 0, 0.85)',
+                            color: '#ffffff',
+                            font: {
+                                size: 10,
+                                family: 'Inter',
+                                weight: 'bold'
+                            },
+                            padding: 6,
+                            borderRadius: 4
+                        }
+                    };
+                }
+            });
+
+            if (forecastChart) {
+                // Update existing chart
+                forecastChart.data.labels = labels;
+                forecastChart.data.datasets[0].data = values;
+                forecastChart.data.datasets[0].label = currentMode === 'live' ? 'Forecast Load (Model B)' : 'Backtest Load (Model A)';
+                forecastChart.options.plugins.annotation.annotations = annotations;
+                forecastChart.update();
+            } else {
+                // Create new chart
+                const ctx = document.getElementById('forecastChart').getContext('2d');
+                
+                // Cyan-Blue Gradient fill under line
+                const fillGradient = ctx.createLinearGradient(0, 0, 0, 400);
+                fillGradient.addColorStop(0, 'rgba(0, 242, 254, 0.2)');
+                fillGradient.addColorStop(1, 'rgba(0, 242, 254, 0.0)');
+
+                forecastChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: currentMode === 'live' ? 'Forecast Load (Model B)' : 'Backtest Load (Model A)',
+                            data: values,
+                            borderColor: '#00f2fe',
+                            borderWidth: 3,
+                            pointBackgroundColor: '#00f2fe',
+                            pointHoverRadius: 6,
+                            fill: true,
+                            backgroundColor: fillGradient,
+                            tension: 0.35
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.05)',
+                                },
+                                ticks: {
+                                    color: '#9ca3af',
+                                    font: { family: 'Inter', size: 10 },
+                                    maxTicksLimit: 12
+                                }
+                            },
+                            y: {
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.05)',
+                                },
+                                ticks: {
+                                    color: '#9ca3af',
+                                    font: { family: 'Inter', size: 10 }
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                labels: {
+                                    color: '#f3f4f6',
+                                    font: { family: 'Outfit', size: 12 }
+                                }
+                            },
+                            annotation: {
+                                annotations: annotations
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function renderWeatherPanel(weatherData) {
+            if (weatherData.length === 0) return;
+
+            // Current conditions (first index)
+            const current = weatherData[0];
+            document.getElementById('valTemp').textContent = `${current.temperature.toFixed(1)}°C`;
+            document.getElementById('valHum').textContent = `${current.humidity.toFixed(0)}%`;
+            document.getElementById('valCloud').textContent = `${current.cloud_cover.toFixed(0)}%`;
+            document.getElementById('valWind').textContent = `${current.wind_speed.toFixed(1)} km/h`;
+
+            // Prepare lists for sparklines
+            const temps = weatherData.map(item => item.temperature);
+            const hums = weatherData.map(item => item.humidity);
+            const clouds = weatherData.map(item => item.cloud_cover);
+            const winds = weatherData.map(item => item.wind_speed);
+
+            // Render/Update Sparklines
+            createSparkline('sparklineTemp', temps, '#4facfe');
+            createSparkline('sparklineHum', hums, '#a855f7');
+            createSparkline('sparklineCloud', clouds, '#e2e8f0');
+            createSparkline('sparklineWind', winds, '#10b981');
+        }
+
+        function createSparkline(canvasId, dataset, color) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            const labels = dataset.map((_, i) => i);
+
+            if (sparklineCharts[canvasId]) {
+                sparklineCharts[canvasId].data.datasets[0].data = dataset;
+                sparklineCharts[canvasId].update();
+            } else {
+                sparklineCharts[canvasId] = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: dataset,
+                            borderColor: color,
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { display: false },
+                            y: { display: false }
+                        }
+                    }
+                });
+            }
+        }
+
+        function renderHolidayBanner(holidayData) {
+            const container = document.getElementById('holidayBannerContainer');
+            container.innerHTML = ''; // reset
+
+            const inWindow = holidayData.in_window;
+            const nearest = holidayData.nearest_upcoming;
+
+            if (inWindow && inWindow.length > 0) {
+                // Show critical holiday notice
+                const firstHoliday = inWindow[0];
+                container.innerHTML = `
+                    <div class="holiday-banner glass-card">
+                        <div class="holiday-banner-icon">🔔</div>
+                        <div class="holiday-banner-text">
+                            <h4>Upcoming Regional Holiday: ${firstHoliday.name}</h4>
+                            <p>This festival falls inside the 16-hour forecast window on ${firstHoliday.date}. Industrial and commercial grid loads may deviate significantly from standard weekday patterns.</p>
+                        </div>
+                    </div>
+                `;
+            } else if (nearest && nearest.name) {
+                // Show standard/secondary upcoming notice
+                container.innerHTML = `
+                    <div class="holiday-banner holiday-banner-secondary glass-card">
+                        <div class="holiday-banner-icon">🗓️</div>
+                        <div class="holiday-banner-text">
+                            <h4>Next Upcoming Holiday: ${nearest.name} on ${nearest.date}</h4>
+                            <p>The grid forecast window is currently clear of holiday disruptions. The next holiday is in <strong>${nearest.days_away} days</strong>.</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+{
+  "full_features": [
+    "hour_sin",
+    "hour_cos",
+    "dow_sin",
+    "dow_cos",
+    "is_weekend",
+    "month",
+    "is_holiday",
+    "days_to_nearest_holiday",
+    "wx_temperature",
+    "wx_humidity",
+    "wx_cloud_cover",
+    "wx_wind_speed",
+    "cooling_degree",
+    "lag_1step",
+    "lag_1day",
+    "lag_1week",
+    "roll_mean_1h",
+    "roll_mean_24h"
+  ],
+  "calendar_weather_features": [
+    "hour_sin",
+    "hour_cos",
+    "dow_sin",
+    "dow_cos",
+    "is_weekend",
+    "month",
+    "is_holiday",
+    "days_to_nearest_holiday",
+    "wx_temperature",
+    "wx_humidity",
+    "wx_cloud_cover",
+    "wx_wind_speed",
+    "cooling_degree"
+  ],
+  "lag_features": [
+    "lag_1step",
+    "lag_1day",
+    "lag_1week",
+    "roll_mean_1h",
+    "roll_mean_24h"
+  ],
+  "target": "total_load",
+  "training_data_end": "2017-12-30 23:50:00",
+  "dhanbad_lat": 23.7957,
+  "dhanbad_lon": 86.4304
+}

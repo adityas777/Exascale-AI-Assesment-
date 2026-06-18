@@ -1,0 +1,45 @@
+date,name,type,confidence
+2017-01-14,Tusu Parab (last day of Poush month),regional_tribal,estimated
+2017-01-26,Republic Day,gazetted,high
+2017-02-24,Maha Shivaratri,gazetted,high
+2017-03-30,Sarhul (Chaitra Shukla Tritiya),regional_tribal,estimated
+2017-04-09,Mahavir Jayanti,gazetted,high
+2017-04-14,Dr. B. R. Ambedkar's Jayanti; Good Friday,gazetted,high
+2017-05-10,Buddha Purnima,gazetted,high
+2017-06-26,Id-ul-Fitr,gazetted,high
+2017-08-15,Independence Day; Janmashtami,gazetted,high
+2017-09-01,Karam / Karma Parab (Bhadrapada Shukla Ekadashi),regional_tribal,estimated
+2017-09-02,Bakrid,gazetted,high
+2017-09-30,Dussehra,gazetted,high
+2017-10-01,Muharram,gazetted,high
+2017-10-02,Gandhi Jayanti,gazetted,high
+2017-10-19,Diwali,gazetted,high
+2017-10-20,"Sohrai (day after Diwali, cattle festival)",regional_tribal,estimated
+2017-10-26,Chhath Puja,gazetted,high
+2017-11-04,Guru Nanak Jayanti,gazetted,high
+2017-11-15,Jharkhand Formation Day,gazetted,high
+2017-12-02,Milad-un-Nabi,gazetted,high
+2017-12-25,Christmas,gazetted,high
+2026-01-12,Sohrai (alternate sourcing: bank-holiday listing),regional_tribal,conflicting
+2026-01-13,Tusu Parab (Poush Sankranti period),regional_tribal,medium
+2026-01-26,Republic Day,gazetted,high
+2026-02-15,Maha Shivaratri,gazetted,high
+2026-03-21,Id-ul-Fitr (estimated),gazetted,high
+2026-03-21,Sarhul (Chaitra Shukla Tritiya),regional_tribal,high
+2026-03-31,Mahavir Jayanti,gazetted,high
+2026-04-03,Good Friday,gazetted,high
+2026-04-14,Dr. B. R. Ambedkar's Jayanti,gazetted,high
+2026-05-01,Buddha Purnima,gazetted,high
+2026-05-28,Bakrid (estimated),gazetted,high
+2026-06-26,Muharram (estimated),gazetted,high
+2026-08-15,Independence Day,gazetted,high
+2026-08-26,Milad-un-Nabi (estimated),gazetted,high
+2026-09-04,Janmashtami,gazetted,high
+2026-09-22,Karam / Karma Parab (Bhadrapada Shukla Ekadashi),regional_tribal,high
+2026-10-02,Gandhi Jayanti,gazetted,high
+2026-10-20,Dussehra,gazetted,high
+2026-11-08,Diwali,gazetted,high
+2026-11-09,Sohrai (traditional rule: day after Diwali),regional_tribal,conflicting
+2026-11-15,Chhath Puja; Jharkhand Formation Day,gazetted,high
+2026-11-24,Guru Nanak Jayanti,gazetted,high
+2026-12-25,Christmas,gazetted,high
