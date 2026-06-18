@@ -134,11 +134,6 @@ Full reasoning and charts are in the notebooks — this table is a summary, not 
 
 ---
 
-## Author
-[Your name] — Data Developer Intern submission for Exascale Deeptech & AI Pvt. Ltd.
-
----
-
 ## Documented Limitations & Trade-offs
 
 1. **Model A vs Model B Accuracy**:
