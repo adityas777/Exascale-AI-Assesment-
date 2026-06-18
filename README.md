@@ -28,122 +28,114 @@ graph TD
 
 ---
 
-## Getting Started
+Historical load + weather + holiday data → cleaned and feature-engineered in Jupyter →
+gradient-boosted model trained offline → FastAPI backend that, on each request, pulls live Dhanbad
+weather and checks the holiday calendar → serves a 24-hour forecast → dashboard auto-refreshes every
+10 minutes.
 
-### Option 1: Docker Packaging (Recommended)
-
-To run the complete system in a single container:
-
-1. **Build the Docker image**:
-   ```bash
-   docker build -t apu-demand-forecast .
-   ```
-
-2. **Run the container**:
-   ```bash
-   docker run -d -p 8000:8000 --name apu-live apu-demand-forecast
-   ```
-
-3. **Access the dashboard**:
-   Open your browser to `http://localhost:8000/`.
-
-### Option 2: Local Development (No Docker)
-
-Ensure you have Python 3.10+ installed.
-
-1. **Navigate to the backend folder**:
-   ```bash
-   cd backend
-   ```
-
-2. **Install requirements**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Start the Uvicorn development server**:
-   ```bash
-   python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-   ```
-
-4. **Access the dashboard**:
-   Open your browser to `http://localhost:8000/`.
+```
+data → notebooks (EDA, features, model) → backend/artifacts/*.pkl → FastAPI → dashboard
+                                                                         ↑
+                                                          live Open-Meteo weather (per request)
+```
 
 ---
 
-## API Reference
+## Repo structure
 
-### 1. Health Check
-* **Endpoint**: `GET /health`
-* **Response**:
-  ```json
-  {
-    "status": "ok"
-  }
-  ```
+```
+.
+├── data/
+│   ├── Utility_consumption.csv          # raw, as provided
+│   └── utility_consumption_clean.csv    # cleaned (Milestone 1 output)
+├── notebooks/
+│   ├── 01_eda_and_cleaning.ipynb        # Milestone 1 — EDA & cleaning
+│   └── 02_features_and_model.ipynb      # Milestone 2 — features, model training, justification
+├── backend/
+│   ├── app/
+│   │   ├── main.py                      # FastAPI app, endpoints
+│   │   ├── weather_client.py            # live Open-Meteo integration
+│   │   ├── features.py                  # feature engineering (mirrors notebook 02)
+│   │   ├── holidays_loader.py
+│   │   └── static/index.html            # frontend dashboard
+│   ├── artifacts/                       # trained models + metadata (loaded at startup)
+│   └── requirements.txt
+├── Dockerfile
+└── README.md
+```
 
-### 2. Live Weather Feed
-* **Endpoint**: `GET /weather`
-* **Description**: Returns 96 blocks of 10-minute resampled weather forecasts starting from "now".
-* **Response**:
-  ```json
-  {
-    "generated_at": "2026-06-18T15:00:00+05:30",
-    "stale": false,
-    "data": [
-      {
-        "timestamp": "2026-06-18T15:00:00+05:30",
-        "temperature": 32.4,
-        "humidity": 68.0,
-        "cloud_cover": 40.0,
-        "wind_speed": 12.5
-      }
-    ]
-  }
-  ```
+---
 
-### 3. Holidays Loader
-* **Endpoint**: `GET /holidays`
-* **Description**: Identifies holidays falling in the 16-hour forecast window and reports the next upcoming holiday.
-* **Response**:
-  ```json
-  {
-    "in_window": [
-      {
-        "date": "2026-06-18",
-        "name": "Local Tribal Festival",
-        "type": "regional_tribal",
-        "confidence": "high"
-      }
-    ],
-    "nearest_upcoming": {
-      "date": "2026-08-15",
-      "name": "Independence Day",
-      "days_away": 58
-    }
-  }
-  ```
+## Running it
 
-### 4. Forecast Endpoint
-* **Endpoint**: `GET /forecast?mode={live|backtest}`
-* **Parameters**:
-  - `mode` (optional, default: `live`):
-    - `live`: Runs live inference using **Model B** (weather + calendar only).
-    - `backtest`: Serves historical holdout predictions using **Model A** (includes lag features).
-* **Response**:
-  ```json
-  {
-    "generated_at": "2026-06-18T15:00:00+05:30",
-    "model": "model_b_live",
-    "stale": false,
-    "data": [
-      {
-        "timestamp": "2026-06-18T15:00:00+05:30",
-        "predicted_load_kw": 74530.2
-      }
-    ]
-  }
-  ```
+**Docker (recommended):**
+```bash
+docker build -t apu-demand-forecast .
+docker run -p 8000:8000 apu-demand-forecast
+# open http://localhost:8000
+```
+
+**Local (no Docker):**
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+---
+
+## API reference
+
+| Endpoint | Description |
+|---|---|
+| `GET /forecast?mode=live` | Next 24h (96 × 10-min blocks) predicted load, using live weather + calendar features |
+| `GET /forecast?mode=backtest` | Historical holdout predictions from Model A, for comparison |
+| `GET /weather` | Live Dhanbad weather (temperature, humidity, cloud cover, wind speed) for the forecast window |
+| `GET /holidays` | Gazetted + regional festival holidays overlapping the forecast window |
+| `GET /health` | Liveness check |
+
+---
+
+## Methodology summary
+
+| Step | Approach | Why |
+|---|---|---|
+| Date parsing | Detected and fixed two silently mixed datetime formats | Naive parsing dropped ~60% of rows as invalid |
+| Outliers | IQR winsorizing (3× fence), feeder-specific | Outliers were a real short-lived demand event, not sensor noise — clipping preserves the time index for lag features |
+| Weather | Open-Meteo Historical API (training) / Forecast API (live) | Free, no key, covers temperature/humidity/cloud cover/wind speed as required |
+| Holidays | `holidays` library (Jharkhand) + manually curated regional tribal festivals | Generic national calendars miss Sarhul, Karma, Sohrai, Tusu Parab |
+| Model | HistGradientBoostingRegressor, two variants | Matches the non-linear seasonality + weather interactions seen in EDA |
+
+Full reasoning and charts are in the notebooks — this table is a summary, not a replacement for them.
+
+### Model comparison (28-day holdout)
+
+| Model | MAPE | Used for |
+|---|---|---|
+| Seasonal-naive baseline | 10.7% | Sanity check |
+| Model A (weather + calendar + lags) | 0.65% | Offline backtesting only |
+| Model B (weather + calendar, no lags) | 9.2% | **The live API** |
+
+---
+
+## Known limitations (stated honestly rather than hidden)
+
+- **No live SCADA feed exists in this prototype.** Model A's near-perfect accuracy depends on recent
+  true load values (`lag_1step`, etc.), which aren't available at live request time — so the live API
+  uses Model B instead, which is honestly weaker but doesn't depend on data we don't have.
+- **Sohrai's 2026 date is ambiguous between sources** (traditional post-Diwali rule vs. one third-party
+  holiday listing) — both candidates are in `jharkhand_holidays.csv`, flagged `confidence: conflicting`.
+  Worth a final check against the official Jharkhand gazette.
+- **The historical weather archive fetch requires live internet access to run** — if re-executing the
+  notebooks offline, a clearly-labeled synthetic fallback is used so the notebook still runs end-to-end,
+  but real Dhanbad weather is used whenever internet is available.
+- Regional festival dates are computed from documented lunar-calendar rules where an authoritative
+  Gregorian date wasn't independently verifiable, and are marked accordingly by confidence level.
+
+---
+
+## Author
+[Your name] — Data Developer Intern submission for Exascale Deeptech & AI Pvt. Ltd.
 
 ---
 
